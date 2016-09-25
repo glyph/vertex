@@ -1,24 +1,53 @@
-# twisted
+# -*- test-case-name: vertex.test.test_command -*-
+# Copyright (c) Twisted Matrix Laboratories.
+# See LICENSE for details.
+"""
+Protocol messages used by vertex.
+"""
+
+# Twisted
+
 from twisted.protocols.amp import (
     AmpBox, String, Unicode, ListOf, Command,
     Integer, _objectsToStrings
     )
 
-# vertex
+# Vertex
 from vertex.amputil import (
     Cert, CertReq, HostPort, Q2QAddressArgument
     )
 from vertex.exceptions import ConnectionError, BadCertificateRequest
 
 class ConnectionStartBox(AmpBox):
-    def __init__(self, __transport):
-        super(ConnectionStartBox, self).__init__()
-        self.virtualTransport = __transport
+    """
+    This is an AMP box that, when sent, hooks into the C{startProtocol} method
+    of a virtual transport.
+    """
+    def __init__(self, transport):
+        """
+        Create a L{ConnectionStartBox} with a virtual transport.
 
-    # XXX Overriding a private interface
+        @param transport: A virtual transport that will be started when this
+            box is sent.
+        @type transport: L{vertex.q2q.VirtualTransport}
+        """
+        super(ConnectionStartBox, self).__init__()
+        self.virtualTransport = transport
+
+
     def _sendTo(self, proto):
+        """
+        Overrides a private interface; this calls
+        L{VirtualProtocol.startProtocol} once this L{ConnectionStartBox} is
+        sent.
+
+        @param proto: The underlying transport protocol to send this message
+            to.
+        """
         super(ConnectionStartBox, self)._sendTo(proto)
         self.virtualTransport.startProtocol()
+
+
 
 class Listen(Command):
     """
@@ -47,13 +76,36 @@ class Listen(Command):
 
     result = []
 
+
+
 class Virtual(Command):
+    """
+    L{Virtual} is a command sent to establish a virtual peer-to-peer connection
+    proxied by an intermediary server.  The 'id' argument is a unique
+    identifier (unique only within the scope of the underlying transport) used
+    to reference which connection the sender is connecting to or listening on.
+    """
     commandName = 'virtual'
     result = []
 
     arguments = [('id', Integer())]
 
+    @classmethod
     def makeResponse(cls, objects, proto):
+        """
+        Synthesize a L{ConnectionStartBox} response to the L{Virtual} command,
+        referencing its special C{__transport__} response key.
+
+        @see: L{vertex.q2q.Q2Q._virtual}
+
+        @param objects: objects returned from the responder (empty, in the one
+            and only implementation)
+        @type objects: L{dict}
+
+        @param proto: underlying "real" Q2Q protocol object
+
+        @return: serialization of L{ConnectionStartBox} response.
+        """
         tpt = objects.pop('__transport__')
         # XXX Using a private API
         return _objectsToStrings(
@@ -61,7 +113,7 @@ class Virtual(Command):
             ConnectionStartBox(tpt),
             proto)
 
-    makeResponse = classmethod(makeResponse)
+
 
 class Identify(Command):
     """
@@ -85,6 +137,8 @@ class Identify(Command):
 
     response = [('certificate', Cert())]
 
+
+
 class BindUDP(Command):
     """
     See L{PTCPMethod}
@@ -103,6 +157,8 @@ class BindUDP(Command):
     errors = {ConnectionError: 'ConnectionError'}
 
     response = []
+
+
 
 class SourceIP(Command):
     """
