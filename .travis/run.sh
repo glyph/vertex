@@ -9,7 +9,7 @@ case "${TOXENV}" in
             git --work-tree . checkout origin/master .
             twistedchecker vertex > ../.baseline.result
         )
-        twistedchecker --diff=.baseline.result vertex
+        twistedchecker --diff=.baseline.result vertex -f parseable
         ;;
     py27)
         coverage run `which trial` vertex
